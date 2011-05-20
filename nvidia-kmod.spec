@@ -14,15 +14,7 @@ Summary:       NVIDIA display driver kernel module
 Group:         System Environment/Kernel
 License:       Redistributable, no modification permitted
 URL:           http://www.nvidia.com/
-# Source is created from these files:
-#ftp://download.nvidia.com/XFree86/Linux-x86/%{version}/NVIDIA-Linux-x86-%{version}-pkg0.run
-#ftp://download.nvidia.com/XFree86/Linux-x86_64/%{version}/NVIDIA-Linux-x86_64-%{version}-pkg0.run
-
-# <switch me> when sources are on kwizart's repo
 Source0:       nvidia-kmod-data-%{version}.tar.bz2
-#Source0:       http://www.diffingo.com/downloads/livna/kmod-data/nvidia-kmod-data-%{version}.tar.bz2
-# </switch me>
-
 Source11:       nvidia-kmodtool-excludekernel-filterfile
 
 BuildRoot:     %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
