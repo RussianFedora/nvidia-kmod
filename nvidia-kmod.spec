@@ -44,7 +44,7 @@ for kernel_version  in %{?kernel_versions} ; do
 %ifarch %{ix86}
     cp -a nvidiapkg-x86 _kmod_build_${kernel_version%%___*}
 %else
-    cp -a nvidiapkg-x86_64 _kmod_build_${kernel_version%%___*}
+    cp -a nvidiapkg-x64 _kmod_build_${kernel_version%%___*}
 %endif
 done
 
@@ -72,6 +72,7 @@ rm -rf $RPM_BUILD_ROOT
 %changelog
 * Thu Nov 10 2011 Arkady L. Shane <ashejn@russianfedora.ru> - 1:290.06-1.R
 - build 290.06 beta
+- fix path
 
 * Wed Nov 02 2011 Nicolas Chauvet <kwizart@gmail.com> - 1:285.05.09-1.4
 - Rebuild for F-16 kernel
