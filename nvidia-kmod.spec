@@ -3,19 +3,20 @@
 # "buildforkernels newest" macro for just that build; immediately after
 # queuing that build enable the macro again for subsequent builds; that way
 # a new akmod package will only get build when a new one is actually needed
-#define buildforkernels akmod
+%define buildforkernels current
 
 Name:          nvidia-kmod
 Epoch:         1
-Version:       270.41.06
+Version:       290.06
 # Taken over by kmodtool
-Release:       1%{?dist}.1.R
+Release:       1%{?dist}.R
 Summary:       NVIDIA display driver kernel module
 Group:         System Environment/Kernel
 License:       Redistributable, no modification permitted
 URL:           http://www.nvidia.com/
 Source0:       nvidia-kmod-data-%{version}.tar.bz2
-Source11:       nvidia-kmodtool-excludekernel-filterfile
+
+Source11:      nvidia-kmodtool-excludekernel-filterfile
 
 BuildRoot:     %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
@@ -43,25 +44,16 @@ for kernel_version  in %{?kernel_versions} ; do
 %ifarch %{ix86}
     cp -a nvidiapkg-x86 _kmod_build_${kernel_version%%___*}
 %else
-    cp -a nvidiapkg-x64 _kmod_build_${kernel_version%%___*}
+    cp -a nvidiapkg-x86_64 _kmod_build_${kernel_version%%___*}
 %endif
 done
 
 
 %build
 for kernel_version in %{?kernel_versions}; do
-    pushd _kmod_build_${kernel_version%%___*}/kernel/
-    ln -s -f Makefile.kbuild Makefile
-        if [[ "${kernel_version%%___*}" = *xen ]] ; then
-            CC="cc -D__XEN_TOOLS__ \
-            -I${kernel_version##*___}/include/asm/mach-xen" \
-            IGNORE_XEN_PRESENCE=1 \
-            make %{?_smp_mflags}  SYSSRC="${kernel_version##*___}" module
-        else
-            IGNORE_XEN_PRESENCE=1 \
-            make %{?_smp_mflags}  SYSSRC="${kernel_version##*___}" module
-        fi
-    popd
+  pushd _kmod_build_${kernel_version%%___*}/kernel/
+    make %{?_smp_mflags}  SYSSRC="${kernel_version##*___}" module
+  popd
 done
 
 
@@ -78,8 +70,42 @@ rm -rf $RPM_BUILD_ROOT
 
 
 %changelog
-* Fri May 20 2011 Arkady L. Shane <ashejn@russianfedora.ru> - 1:270.41.06-1.1.R
-- rebuilt against new kernel
+* Thu Nov 10 2011 Arkady L. Shane <ashejn@russianfedora.ru> - 1:290.06-1.R
+- build 290.06 beta
+
+* Wed Nov 02 2011 Nicolas Chauvet <kwizart@gmail.com> - 1:285.05.09-1.4
+- Rebuild for F-16 kernel
+
+* Tue Nov 01 2011 Nicolas Chauvet <kwizart@gmail.com> - 1:285.05.09-1.3
+- Rebuild for F-16 kernel
+
+* Fri Oct 28 2011 Nicolas Chauvet <kwizart@gmail.com> - 1:285.05.09-1.2
+- Rebuild for F-16 kernel
+
+* Sun Oct 23 2011 Nicolas Chauvet <kwizart@gmail.com> - 1:285.05.09-1.1
+- Rebuild for F-16 kernel
+
+* Tue Oct 04 2011 Nicolas Chauvet <kwizart@gmail.com> - 1:285.05.09-1
+- Update to 285.05.09
+
+* Sat Aug 27 2011 Nicolas Chauvet <kwizart@gmail.com> - 1:285.03-1
+- Update to 285.03
+- Remove kernel-xen filter
+
+* Tue Aug 02 2011 Nicolas Chauvet <kwizart@gmail.com> - 1:280.13-2
+- Update to 280.13
+
+* Sun Jul 24 2011 Nicolas Chauvet <kwizart@gmail.com> - 1:280.11-1
+- Update to 280.11
+
+* Fri Jul 01 2011 Nicolas Chauvet <kwizart@gmail.com> - 1:280.04-1
+- Update to 280.04 (beta)
+
+* Tue Jun 14 2011 Nicolas Chauvet <kwizart@gmail.com> - 1:275.09.07-1
+- Update to 275.09.07
+
+* Wed Jun 08 2011 Nicolas Chauvet <kwizart@gmail.com> - 1:270.41.19-1
+- Update to 270.41.19
 
 * Sat Apr 30 2011 Nicolas Chauvet <kwizart@gmail.com> - 1:270.41.06-1
 - Update to 270.41.06
