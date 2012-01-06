@@ -6,17 +6,25 @@
 %define buildforkernels current
 
 Name:          nvidia-kmod
-Epoch:         1
-Version:       290.06
+Epoch:         2
+Version:       275.43
 # Taken over by kmodtool
-Release:       1%{?dist}.1.R
+Release:       1%{?dist}.R
 Summary:       NVIDIA display driver kernel module
 Group:         System Environment/Kernel
 License:       Redistributable, no modification permitted
 URL:           http://www.nvidia.com/
-Source0:       nvidia-kmod-data-%{version}.tar.bz2
+# Source is created from these files:
+#ftp://download.nvidia.com/XFree86/Linux-x86/%{version}/NVIDIA-Linux-x86-%{version}-pkg0.run
+#ftp://download.nvidia.com/XFree86/Linux-x86_64/%{version}/NVIDIA-Linux-x86_64-%{version}-pkg0.run
 
-Source11:      nvidia-kmodtool-excludekernel-filterfile
+# <switch me> when sources are on kwizart's repo
+#Source0:       http://rpms.kwizart.net/fedora/SOURCES/nvidia-kmod-data-%{version}.tar.bz2
+#Source0:       http://www.diffingo.com/downloads/livna/kmod-data/nvidia-kmod-data-%{version}.tar.bz2
+Source0:		http://koji.russianfedora.ru/sources/nvidia-kmod-data-%{version}.tar.bz2
+# </switch me>
+
+Source11:       nvidia-kmodtool-excludekernel-filterfile
 
 BuildRoot:     %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
@@ -44,7 +52,7 @@ for kernel_version  in %{?kernel_versions} ; do
 %ifarch %{ix86}
     cp -a nvidiapkg-x86 _kmod_build_${kernel_version%%___*}
 %else
-    cp -a nvidiapkg-x64 _kmod_build_${kernel_version%%___*}
+    cp -a nvidiapkg-x86_64 _kmod_build_${kernel_version%%___*}
 %endif
 done
 
@@ -70,12 +78,26 @@ rm -rf $RPM_BUILD_ROOT
 
 
 %changelog
-* Mon Nov 14 2011 Arkady L. Shane <ashejn@russianfedora.ru> - 1:290.06-1.1.R
-- rebuilt against new kernel
+* Fri Jan  6 2012 Alexei Panov <me AT elemc DOT name> - 2:275.43-1.R
+- Downgrade/update to new stable release 275.45
 
-* Thu Nov 10 2011 Arkady L. Shane <ashejn@russianfedora.ru> - 1:290.06-1.R
-- build 290.06 beta
-- fix path
+* Tue Dec 13 2011 Nicolas Chauvet <kwizart@gmail.com> - 1:290.10-1.4
+- rebuild for updated kernel
+
+* Sat Dec 10 2011 Nicolas Chauvet <kwizart@gmail.com> - 1:290.10-1.3
+- rebuild for updated kernel
+
+* Thu Dec 01 2011 Nicolas Chauvet <kwizart@gmail.com> - 1:290.10-1.2
+- rebuild for updated kernel
+
+* Wed Nov 23 2011 Nicolas Chauvet <kwizart@gmail.com> - 1:290.10-1.1
+- rebuild for updated kernel
+
+* Tue Nov 22 2011 Nicolas Chauvet <kwizart@gmail.com> - 1:290.10-1
+- Update to 290.10
+
+* Wed Nov 09 2011 Nicolas Chauvet <kwizart@gmail.com> - 1:290.06-1
+- Update to 290.06 beta
 
 * Wed Nov 02 2011 Nicolas Chauvet <kwizart@gmail.com> - 1:285.05.09-1.4
 - Rebuild for F-16 kernel
