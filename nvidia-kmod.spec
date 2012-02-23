@@ -25,8 +25,6 @@ Source0:		http://koji.russianfedora.ru/sources/nvidia-kmod-data-%{version}.tar.x
 # </switch me>
 
 Source11:       nvidia-kmodtool-excludekernel-filterfile
-Patch1:			%{name}-kernel33.patch
-Patch2:			%{name}-devel-kernel-license.patch
 
 BuildRoot:     %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
@@ -48,9 +46,6 @@ The nvidia %{version} display driver kernel module for kernel %{kversion}.
 # print kmodtool output for debugging purposes:
 kmodtool  --target %{_target_cpu}  --repo rpmfusion --kmodname %{name} --filterfile %{SOURCE11} --obsolete-name nvidia-newest --obsolete-version "%{version}" %{?buildforkernels:--%{buildforkernels}} %{?kernels:--for-kernels "%{?kernels}"} 2>/dev/null
 %setup -q -c -T -a 0
-
-%patch1 -p1 -b .kernel-3.3
-%patch2 -p1 -b .development-kernel-workaround
 
 for kernel_version  in %{?kernel_versions} ; do
 %ifarch %{ix86}
