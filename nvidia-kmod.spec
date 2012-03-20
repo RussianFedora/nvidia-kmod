@@ -9,7 +9,7 @@ Name:          nvidia-kmod
 Epoch:         1
 Version:       295.20
 # Taken over by kmodtool
-Release:       1%{?dist}
+Release:       2%{?dist}
 Summary:       NVIDIA display driver kernel module
 Group:         System Environment/Kernel
 License:       Redistributable, no modification permitted
@@ -82,6 +82,9 @@ rm -rf $RPM_BUILD_ROOT
 
 
 %changelog
+* Wed Mar 21 2012 Alexei Panov <me AT elemc DOT name> - 1:295.20-2
+- Remove .R (new RFR standart)
+
 * Thu Feb 23 2012 Alexei Panov <me AT elemc DOT name> - 1:295.20-1.R
 - New release and new patches
 
