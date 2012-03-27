@@ -6,10 +6,10 @@
 %define buildforkernels current
 
 Name:          nvidia-kmod
-Epoch:         2
-Version:       275.43
+Epoch:         1
+Version:       295.33
 # Taken over by kmodtool
-Release:       2%{?dist}
+Release:       1%{?dist}
 Summary:       NVIDIA display driver kernel module
 Group:         System Environment/Kernel
 License:       Redistributable, no modification permitted
@@ -21,7 +21,7 @@ URL:           http://www.nvidia.com/
 # <switch me> when sources are on kwizart's repo
 #Source0:       http://rpms.kwizart.net/fedora/SOURCES/nvidia-kmod-data-%{version}.tar.bz2
 #Source0:       http://www.diffingo.com/downloads/livna/kmod-data/nvidia-kmod-data-%{version}.tar.bz2
-Source0:		http://koji.russianfedora.ru/sources/nvidia-kmod-data-%{version}.tar.bz2
+Source0:        http://koji.russianfedora.ru/sources/nvidia-kmod-data-%{version}.tar.xz
 # </switch me>
 
 Source11:       nvidia-kmodtool-excludekernel-filterfile
@@ -47,12 +47,11 @@ The nvidia %{version} display driver kernel module for kernel %{kversion}.
 kmodtool  --target %{_target_cpu}  --repo rpmfusion --kmodname %{name} --filterfile %{SOURCE11} --obsolete-name nvidia-newest --obsolete-version "%{version}" %{?buildforkernels:--%{buildforkernels}} %{?kernels:--for-kernels "%{?kernels}"} 2>/dev/null
 %setup -q -c -T -a 0
 
-
 for kernel_version  in %{?kernel_versions} ; do
 %ifarch %{ix86}
     cp -a nvidiapkg-x86 _kmod_build_${kernel_version%%___*}
 %else
-    cp -a nvidiapkg-x86_64 _kmod_build_${kernel_version%%___*}
+    cp -a nvidiapkg-x64 _kmod_build_${kernel_version%%___*}
 %endif
 done
 
@@ -78,8 +77,11 @@ rm -rf $RPM_BUILD_ROOT
 
 
 %changelog
-* Thu Mar  1 2012 Alexei Panov <me AT elemc DOT name> - 2:275.43-2
-- Fix Release, clear .R
+* Tue Mar 27 2012 Alexei Panov <me AT elemc DOT name> 1:295.33-1
+- New release
+
+* Thu Feb 23 2012 Alexei Panov <me AT elemc DOT name> - 1:295.20-1.R
+- New release and new patches
 
 * Fri Jan  6 2012 Alexei Panov <me AT elemc DOT name> - 2:275.43-1.R
 - Downgrade/update to new stable release 275.45
