@@ -77,7 +77,7 @@ rm -rf $RPM_BUILD_ROOT
 
 
 %changelog
-* Thu Mar 30 2015 Arkady L. Shane <ashejn@russianfedora.pro> - 1:364.12-1.R
+* Thu Mar 30 2016 Arkady L. Shane <ashejn@russianfedora.pro> - 1:364.12-1.R
 - update to 364.12
 
 * Sat Nov 21 2015 Nicolas Chauvet <kwizart@gmail.com> - 1:358.16-1
