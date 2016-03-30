@@ -3,36 +3,31 @@
 # "buildforkernels newest" macro for just that build; immediately after
 # queuing that build enable the macro again for subsequent builds; that way
 # a new akmod package will only get build when a new one is actually needed
-%define buildforkernels current
+#global buildforkernels newest
 
 Name:          nvidia-kmod
 Epoch:         1
-Version:       295.33
+Version:       364.12
 # Taken over by kmodtool
 Release:       1%{?dist}
 Summary:       NVIDIA display driver kernel module
 Group:         System Environment/Kernel
 License:       Redistributable, no modification permitted
 URL:           http://www.nvidia.com/
-# Source is created from these files:
-#ftp://download.nvidia.com/XFree86/Linux-x86/%{version}/NVIDIA-Linux-x86-%{version}-pkg0.run
-#ftp://download.nvidia.com/XFree86/Linux-x86_64/%{version}/NVIDIA-Linux-x86_64-%{version}-pkg0.run
 
-# <switch me> when sources are on kwizart's repo
-#Source0:       http://rpms.kwizart.net/fedora/SOURCES/nvidia-kmod-data-%{version}.tar.bz2
-#Source0:       http://www.diffingo.com/downloads/livna/kmod-data/nvidia-kmod-data-%{version}.tar.bz2
-Source0:        http://koji.russianfedora.ru/sources/nvidia-kmod-data-%{version}.tar.xz
-# </switch me>
-
-Source11:       nvidia-kmodtool-excludekernel-filterfile
+Source11:      nvidia-kmodtool-excludekernel-filterfile
+Patch0:        nv-linux-arm.patch
+Patch1:        nv-linux-arm2.patch
 
 BuildRoot:     %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
 # needed for plague to make sure it builds for i586 and i686
-ExclusiveArch:  i686 x86_64
+ExclusiveArch:  i686 x86_64 armv7hl
 
 # get the needed BuildRequires (in parts depending on what we build for)
-BuildRequires:  %{_bindir}/kmodtool
+%global AkmodsBuildRequires %{_bindir}/kmodtool, xorg-x11-drv-nvidia-kmodsrc >= %{epoch}:%{version}
+BuildRequires:  %{AkmodsBuildRequires}
+
 %{!?kernels:BuildRequires: buildsys-build-rpmfusion-kerneldevpkgs-%{?buildforkernels:%{buildforkernels}}%{!?buildforkernels:current}-%{_target_cpu} }
 # kmodtool does its magic here
 %{expand:%(kmodtool --target %{_target_cpu} --repo rpmfusion --kmodname %{name} --filterfile %{SOURCE11} --obsolete-name nvidia-newest --obsolete-version "%{version}" %{?buildforkernels:--%{buildforkernels}} %{?kernels:--for-kernels "%{?kernels}"} 2>/dev/null) }
@@ -45,21 +40,24 @@ The nvidia %{version} display driver kernel module for kernel %{kversion}.
 %{?kmodtool_check}
 # print kmodtool output for debugging purposes:
 kmodtool  --target %{_target_cpu}  --repo rpmfusion --kmodname %{name} --filterfile %{SOURCE11} --obsolete-name nvidia-newest --obsolete-version "%{version}" %{?buildforkernels:--%{buildforkernels}} %{?kernels:--for-kernels "%{?kernels}"} 2>/dev/null
-%setup -q -c -T -a 0
+%setup -T -c
+tar --use-compress-program xz -xf %{_datadir}/%{name}-%{version}/%{name}-%{version}-%{_target_cpu}.tar.xz
+# patch loop
+%patch0 -p1
+%patch1 -p1
+
 
 for kernel_version  in %{?kernel_versions} ; do
-%ifarch %{ix86}
-    cp -a nvidiapkg-x86 _kmod_build_${kernel_version%%___*}
-%else
-    cp -a nvidiapkg-x64 _kmod_build_${kernel_version%%___*}
-%endif
+    cp -a kernel _kmod_build_${kernel_version%%___*}
 done
-
 
 %build
 for kernel_version in %{?kernel_versions}; do
-  pushd _kmod_build_${kernel_version%%___*}/kernel/
-    make %{?_smp_mflags}  SYSSRC="${kernel_version##*___}" module
+  pushd _kmod_build_${kernel_version%%___*}/
+    make %{?_smp_mflags} \
+        KERNEL_UNAME="${kernel_version%%___*}" SYSSRC="${kernel_version##*___}" \
+        IGNORE_CC_MISMATCH=1 IGNORE_XEN_PRESENCE=1 IGNORE_PREEMPT_RT_PRESENCE=1 \
+        module
   popd
 done
 
@@ -67,7 +65,9 @@ done
 %install
 rm -rf $RPM_BUILD_ROOT
 for kernel_version in %{?kernel_versions}; do
-    install -D -m 0755 _kmod_build_${kernel_version%%___*}/kernel/nvidia.ko $RPM_BUILD_ROOT/%{kmodinstdir_prefix}/${kernel_version%%___*}/%{kmodinstdir_postfix}/nvidia.ko
+    mkdir -p  $RPM_BUILD_ROOT/%{kmodinstdir_prefix}/${kernel_version%%___*}/%{kmodinstdir_postfix}/
+    install -D -m 0755 _kmod_build_${kernel_version%%___*}/nvidia*.ko \
+         $RPM_BUILD_ROOT/%{kmodinstdir_prefix}/${kernel_version%%___*}/%{kmodinstdir_postfix}/
 done
 %{?akmod_install}
 
@@ -77,26 +77,414 @@ rm -rf $RPM_BUILD_ROOT
 
 
 %changelog
-* Tue Mar 27 2012 Alexei Panov <me AT elemc DOT name> 1:295.33-1
-- New release
+* Thu Mar 30 2015 Arkady L. Shane <ashejn@russianfedora.pro> - 1:364.12-1.R
+- update to 364.12
 
-* Thu Feb 23 2012 Alexei Panov <me AT elemc DOT name> - 1:295.20-1.R
-- New release and new patches
+* Sat Nov 21 2015 Nicolas Chauvet <kwizart@gmail.com> - 1:358.16-1
+- Update to 358.16
 
-* Fri Jan  6 2012 Alexei Panov <me AT elemc DOT name> - 2:275.43-1.R
-- Downgrade/update to new stable release 275.45
+* Fri Nov 13 2015 Nicolas Chauvet <kwizart@gmail.com> - 1:355.11-3.4
+- Rebuilt for kernel
 
-* Tue Dec 13 2011 Nicolas Chauvet <kwizart@gmail.com> - 1:290.10-1.4
+* Fri Nov 06 2015 Nicolas Chauvet <kwizart@gmail.com> - 1:355.11-3.3
+- Rebuilt for kernel
+
+* Tue Oct 06 2015 Nicolas Chauvet <kwizart@gmail.com> - 1:355.11-3.2
+- Rebuilt for kernel
+
+* Wed Sep 23 2015 Nicolas Chauvet <kwizart@gmail.com> - 1:355.11-3.1
+- Rebuilt for kernel
+
+* Wed Sep 16 2015 Nicolas Chauvet <kwizart@gmail.com> - 1:355.11-3
+- Rebuilt for kernel
+
+* Mon Sep 14 2015 Leigh Scott <leigh123linux@googlemail.com> - 1:355.11-2
+- patch for 4.3rc kernel
+
+* Mon Aug 31 2015 Leigh Scott <leigh123linux@googlemail.com> - 1:355.11-1
+- Update to 355.11
+
+* Fri Aug 28 2015 Leigh Scott <leigh123linux@googlemail.com> - 1:352.41-1
+- Update to 352.41
+
+* Fri Aug 21 2015 Nicolas Chauvet <kwizart@gmail.com> - 1:352.30-2.4
+- Rebuilt for kernel
+
+* Thu Aug 13 2015 Nicolas Chauvet <kwizart@gmail.com> - 1:352.30-2.3
+- Rebuilt for kernel
+
+* Fri Aug 07 2015 Nicolas Chauvet <kwizart@gmail.com> - 1:352.30-2.2
+- Rebuilt for kernel
+
+* Thu Jul 30 2015 Nicolas Chauvet <kwizart@gmail.com> - 1:352.30-2.1
+- Rebuilt for kernel
+
+* Wed Jul 29 2015 Nicolas Chauvet <kwizart@gmail.com> - 1:352.30-2
+- Fix build on arm - missing linux/swiotlb.h include
+
+* Wed Jul 29 2015 Leigh Scott <leigh123linux@googlemail.com> - 1:352.30-1
+- Update to 352.30
+
+* Fri Jul 24 2015 Nicolas Chauvet <kwizart@gmail.com> - 1:352.21-1.4
+- Rebuilt for kernel
+
+* Mon Jun 15 2015 Leigh Scott <leigh123linux@googlemail.com> - 1:352.21-1
+- Update to 352.21
+
+* Wed Jun 10 2015 Nicolas Chauvet <kwizart@gmail.com> - 1:346.72-2.3
+- Rebuilt for kernel
+
+* Tue Jun 02 2015 Nicolas Chauvet <kwizart@gmail.com> - 1:346.72-2.2
+- Rebuilt for kernel
+
+* Sun May 24 2015 Nicolas Chauvet <kwizart@gmail.com> - 1:346.72-2.1
+- Rebuilt for kernel
+
+* Sun May 24 2015 Nicolas Chauvet <kwizart@gmail.com> - 1:346.72-2
+- Rebuilt
+
+* Wed May 20 2015 Leigh Scott <leigh123linux@googlemail.com> - 1:346.72-1
+- Update to 343.72
+
+* Wed May 20 2015 Nicolas Chauvet <kwizart@gmail.com> - 1:346.59-1.6
+- Rebuilt for kernel
+
+* Wed May 13 2015 Nicolas Chauvet <kwizart@gmail.com> - 1:346.59-1.5
+- Rebuilt for kernel
+
+* Sat May 09 2015 Nicolas Chauvet <kwizart@gmail.com> - 1:346.59-1.4
+- Rebuilt for kernel
+
+* Sat May 02 2015 Nicolas Chauvet <kwizart@gmail.com> - 1:346.59-1.3
+- Rebuilt for kernel
+
+* Wed Apr 22 2015 Nicolas Chauvet <kwizart@gmail.com> - 1:346.59-1.2
+- Rebuilt for kernel
+
+* Wed Apr 15 2015 Nicolas Chauvet <kwizart@gmail.com> - 1:346.59-1.1
+- Rebuilt for kernel
+
+* Wed Apr 08 2015 Leigh Scott <leigh123linux@googlemail.com> - 1:346.59-1
+- Update to 343.59
+- drop 4.0.0 kernel patch
+
+* Mon Mar 30 2015 Nicolas Chauvet <kwizart@gmail.com> - 1:346.47-2.4
+- Rebuilt for kernel
+
+* Fri Mar 27 2015 Nicolas Chauvet <kwizart@gmail.com> - 1:346.47-2.3
+- Rebuilt for kernel
+
+* Mon Mar 23 2015 Nicolas Chauvet <kwizart@gmail.com> - 1:346.47-2.2
+- Rebuilt for kernel
+
+* Sat Mar 21 2015 Nicolas Chauvet <kwizart@gmail.com> - 1:346.47-2.1
+- Rebuilt for kernel
+
+* Fri Mar 13 2015 Leigh Scott <leigh123linux@googlemail.com> - 1:346.47-2
+- rebuild for akmod
+
+* Tue Mar 10 2015 Nicolas Chauvet <kwizart@gmail.com> - 1:346.47-1.2
+- Rebuilt for kernel
+
+* Fri Mar 06 2015 Nicolas Chauvet <kwizart@gmail.com> - 1:346.47-1.1
+- Rebuilt for kernel
+
+* Tue Feb 24 2015 Leigh Scott <leigh123linux@googlemail.com> - 1:346.47-1
+- Update to 343.47
+- drop 3.18 kernel patch
+
+* Tue Feb 24 2015 Leigh Scott <leigh123linux@googlemail.com> - 1:346.35-2
+- Patch for 4.0.0 kernel
+
+* Sat Feb 14 2015 Nicolas Chauvet <kwizart@gmail.com> - 1:346.35-1.5
+- Rebuilt for kernel
+
+* Sun Feb 08 2015 Nicolas Chauvet <kwizart@gmail.com> - 1:346.35-1.4
+- Rebuilt for kernel
+
+* Wed Feb 04 2015 Nicolas Chauvet <kwizart@gmail.com> - 1:346.35-1.3
+- Rebuilt for kernel
+
+* Mon Feb 02 2015 Nicolas Chauvet <kwizart@gmail.com> - 1:346.35-1.2
+- Rebuilt for kernel
+
+* Wed Jan 21 2015 Nicolas Chauvet <kwizart@gmail.com> - 1:346.35-1.1
+- Rebuilt for kernel
+
+* Fri Jan 16 2015 Leigh Scott <leigh123linux@googlemail.com> - 1:346.35-1
+- Update to 346.35
+
+* Thu Jan 15 2015 Nicolas Chauvet <kwizart@gmail.com> - 1:343.36-1.3
+- Rebuilt for kernel
+
+* Sat Jan 10 2015 Nicolas Chauvet <kwizart@gmail.com> - 1:343.36-1.2
+- Rebuilt for kernel
+
+* Fri Dec 19 2014 Nicolas Chauvet <kwizart@gmail.com> - 1:343.36-1.1
+- Rebuilt for kernel
+
+* Tue Dec 16 2014 Leigh Scott <leigh123linux@googlemail.com> - 1:343.36-1
+- Update to 343.36
+
+* Sun Dec 14 2014 Nicolas Chauvet <kwizart@gmail.com> - 1:343.22-4.1
+- Rebuilt for kernel
+
+* Fri Dec 05 2014 Nicolas Chauvet <kwizart@gmail.com> - 1:343.22-4
+- Rebuilt for f21 final kernel
+
+* Tue Oct 21 2014 Leigh Scott <leigh123linux@googlemail.com> - 1:343.22-3
+- more 3.18 kernel changes
+
+* Tue Oct 21 2014 Leigh Scott <leigh123linux@googlemail.com> - 1:343.22-2
+- Patch for 3.18 kernel
+
+* Fri Sep 19 2014 Leigh Scott <leigh123linux@googlemail.com> - 1:343.22-1
+- Update to 343.22
+
+* Thu Aug 07 2014 Leigh Scott <leigh123linux@googlemail.com> - 1:343.13-1
+- Update to 343.13
+
+* Tue Jul 08 2014 Leigh Scott <leigh123linux@googlemail.com> - 1:340.24-1
+- Update to 340.24
+
+* Tue Jun 10 2014 Nicolas Chauvet <kwizart@gmail.com> - 1:340.17-2
+- Add epoch to kmodsrc requires
+
+* Mon Jun 09 2014 Leigh Scott <leigh123linux@googlemail.com> - 1:340.17-1
+- Update to 340.17
+
+* Thu Jun 05 2014 Leigh Scott <leigh123linux@googlemail.com> - 1:337.25-2
+- add missing requires to akmod-nvidia package
+
+* Sat May 31 2014 Leigh Scott <leigh123linux@googlemail.com> - 1:337.25-1
+- Update to 337.25
+
+* Sat May 17 2014 Nicolas Chauvet <kwizart@gmail.com> - 1:337.19-2
+- Use kmodsrc to bundle kmod sources
+
+* Tue May 06 2014 Leigh Scott <leigh123linux@googlemail.com> - 1:337.19-1
+- Update to 337.19
+
+* Sat Apr 26 2014 Leigh Scott <leigh123linux@googlemail.com> - 1:337.12-3
+- remove kernel patch
+
+* Wed Apr 09 2014 Nicolas Chauvet <kwizart@gmail.com> - 1:337.12-2
+- Avoid lpae kvarriant on arm
+
+* Tue Apr 08 2014 Leigh Scott <leigh123linux@googlemail.com> - 1:337.12-1
+- Update to 337.12
+
+* Mon Mar 03 2014 Leigh Scott <leigh123linux@googlemail.com> - 1:334.21-1
+- Update to 334.21
+
+* Sat Feb 08 2014 Leigh Scott <leigh123linux@googlemail.com> - 1:334.16-1
+- Update to 334.16
+- Patch for 3.14 kernel
+
+* Sat Jan 25 2014 Nicolas Chauvet <kwizart@gmail.com> - 1:331.38-5
+- Disable uvm when NV_BUILD_MODULE_INSTANCES is set
+- Simplify patch
+
+* Tue Jan 21 2014 Leigh Scott <leigh123linux@googlemail.com> - 1:331.38-4
+- make more changes to 3.13 kernel patch
+
+* Mon Jan 13 2014 Leigh Scott <leigh123linux@googlemail.com> - 1:331.38-3
+- fix patch for 3.13 kernel
+
+* Mon Jan 13 2014 Leigh Scott <leigh123linux@googlemail.com> - 1:331.38-2
+- rebuild for akmod
+
+* Mon Jan 13 2014 Leigh Scott <leigh123linux@googlemail.com> - 1:331.38-1
+- Update to 331.38 release
+- Patch for 3.13 kernel
+
+* Sun Dec 15 2013 Nicolas Chauvet <kwizart@gmail.com> - 1:331.20-10
+- Fix build with lpae kernel
+
+* Wed Dec 11 2013 Nicolas Chauvet <kwizart@gmail.com> - 1:331.20-9
+- Resort and IGNORE XEN/RT Checks
+
+* Tue Dec 10 2013 Nicolas Chauvet <kwizart@gmail.com> - 1:331.20-8
+- Rebuilt for f20 final kernel
+
+* Sat Dec 07 2013 Nicolas Chauvet <kwizart@gmail.com> - 1:331.20-7
+- Rebuilt for f20 final kernel
+
+* Sun Dec 01 2013 Nicolas Chauvet <kwizart@gmail.com> - 1:331.20-6
+- Rebuilt for f20 final kernel
+
+* Sun Nov 24 2013 Nicolas Chauvet <kwizart@gmail.com> - 1:331.20-5
+- Bump
+
+* Sun Nov 24 2013 Nicolas Chauvet <kwizart@gmail.com> - 1:331.20-3
+- Allow akmod to build modules for cuda
+  Set %%_nv_build_module_instances 8 into /etc/rpm/cuda.dist
+
+* Thu Nov 21 2013 Nicolas Chauvet <kwizart@gmail.com> - 1:331.20-2.2
+- Rebuilt for kernel
+
+* Thu Nov 14 2013 Nicolas Chauvet <kwizart@gmail.com> - 1:331.20-2.1
+- Rebuilt for kernel
+
+* Mon Nov 11 2013 Nicolas Chauvet <kwizart@gmail.com> - 1:331.20-2
+- Add nvidia-uvm
+- Fix build directory layout - rfbz#2907
+
+* Thu Nov 07 2013 Leigh Scott <leigh123linux@googlemail.com> - 1:331.20-1
+- Update to 331.20 release
+
+* Wed Nov 06 2013 Leigh Scott <leigh123linux@googlemail.com> - 1:325.15-4
+- use nvidia fix for get_num_physpages
+
+* Mon Sep 16 2013 Leigh Scott <leigh123linux@googlemail.com> - 1:325.15-3
+- patch for 3.12 git kernel
+
+* Tue Aug 06 2013 Leigh Scott <leigh123linux@googlemail.com> - 1:325.15-2
+- rebuild for akmod as pae marco is broken
+
+* Tue Aug 06 2013 Leigh Scott <leigh123linux@googlemail.com> - 1:325.15-1
+- Update to 325.15 release
+- redo kernel patch
+
+* Sun Jul 21 2013 Leigh Scott <leigh123linux@googlemail.com> - 1:325.08-4
+- redo kernel patch
+
+* Tue Jul 16 2013 leigh scott <leigh123linux@googlemail.com> - 1:325.08-3
+- add better patch for 3.10 and 3.11 git kernels
+
+* Mon Jul 08 2013 leigh scott <leigh123linux@googlemail.com> - 1:325.08-2
+- build for current
+
+* Sun Jul 07 2013 leigh scott <leigh123linux@googlemail.com> - 1:325.08-1
+- Update to 325.08
+
+* Fri Jun 28 2013 Nicolas Chauvet <kwizart@gmail.com> - 1:319.32-1
+- Update to 319.32
+- Add support for armv7hl
+
+* Fri May 31 2013 leigh scott <leigh123linux@googlemail.com> - 1:319.23-3
+- Patch for 3.10 kernel
+
+* Thu May 30 2013 Nicolas Chauvet <kwizart@gmail.com> - 1:319.23-2
+- Build for akmods
+
+* Thu May 23 2013 Leigh Scott <leigh123linux@googlemail.com> - 1:319.23-1
+- Update to 319.23
+
+* Sat May 11 2013 Leigh Scott <leigh123linux@googlemail.com> - 1:319.17-1
+- Update to 319.17
+
+* Wed May 01 2013 Nicolas Chauvet <kwizart@gmail.com> - 1:319.12-1
+- Update to 319.12
+
+* Mon Apr 15 2013 Nicolas Chauvet <kwizart@gmail.com> - 1:313.30-2
+- Build for kernel akmods
+
+* Thu Apr 04 2013 Nicolas Chauvet <kwizart@gmail.com> - 1:313.30-1
+- Update to 313.30
+
+* Sun Feb 17 2013 Leigh Scott <leigh123linux@googlemail.com> - 1:313.18-2
+- Fix with a better patch from gentoo
+
+* Wed Jan 16 2013 Leigh Scott <leigh123linux@googlemail.com> - 1:313.18-1
+- Update to 313.18 (adds xorg-server 1.14 ABI support)
+- patch for 3.8rc kernel
+
+* Fri Nov 16 2012 Leigh Scott <leigh123linux@googlemail.com> - 1:310.19-1
+- rebuilt
+
+* Tue Oct 16 2012 Leigh Scott <leigh123linux@googlemail.com> - 1:310.14-2
+- add patch for 3.7rc kernel
+
+* Tue Oct 16 2012 Leigh Scott <leigh123linux@googlemail.com> - 1:310.14-1
+- Update to 310.14
+
+* Mon Sep 24 2012 Leigh Scott <leigh123linux@googlemail.com> - 1:304.51-1
+- Update to 304.51
+
+* Sat Sep 15 2012 Leigh Scott <leigh123linux@googlemail.com> - 1:304.48-1
+- Update to 304.48
+
+* Wed Sep 05 2012 Nicolas Chauvet <kwizart@gmail.com> - 1:304.43-1
+- Update to 304.43
+
+* Tue Aug 14 2012 Leigh Scott <leigh123linux@googlemail.com> - 1:304.37-1
+- Update to 304.37 release
+
+* Sat Aug 04 2012 Leigh Scott <leigh123linux@googlemail.com> - 1:304.32-2
+- build again as the build system lost the first one
+
+* Sat Aug 04 2012 Leigh Scott <leigh123linux@googlemail.com> - 1:304.32-1
+- Update to 304.32
+
+* Tue Jul 31 2012 Leigh Scott <leigh123linux@googlemail.com> - 1:304.30-2
+- add some conditionals to the 3.6 kernel patch
+
+* Tue Jul 31 2012 Leigh Scott <leigh123linux@googlemail.com> - 1:304.30-1
+- Update to 304.30
+
+* Fri Jul 13 2012 Leigh Scott <leigh123linux@googlemail.com> - 1:304.22-1
+- Update to 304.22
+
+* Sat Jun 16 2012 leigh scott <leigh123linux@googlemail.com> - 1:302.17-1
+- Update to 302.17
+
+* Tue May 22 2012 leigh scott <leigh123linux@googlemail.com> - 1:302.11-1
+- Update to 302.11
+
+* Tue May 22 2012 leigh scott <leigh123linux@googlemail.com> - 1:295.53-1
+- Update to 295.53
+
+* Sun May 13 2012 Nicolas Chauvet <kwizart@gmail.com> - 1:295.49-1.4
+- Rebuilt for release kernel
+
+* Wed May 09 2012 Nicolas Chauvet <kwizart@gmail.com> - 1:295.49-1.3
 - rebuild for updated kernel
 
-* Sat Dec 10 2011 Nicolas Chauvet <kwizart@gmail.com> - 1:290.10-1.3
+* Sun May 06 2012 Nicolas Chauvet <kwizart@gmail.com> - 1:295.49-1.2
 - rebuild for updated kernel
 
-* Thu Dec 01 2011 Nicolas Chauvet <kwizart@gmail.com> - 1:290.10-1.2
+* Sat May 05 2012 Nicolas Chauvet <kwizart@gmail.com> - 1:295.49-1.1
 - rebuild for updated kernel
 
-* Wed Nov 23 2011 Nicolas Chauvet <kwizart@gmail.com> - 1:290.10-1.1
+* Thu May 03 2012 leigh scott <leigh123linux@googlemail.com> - 1:295.49-1
+- Update to 295.49
+
+* Wed May 02 2012 Nicolas Chauvet <kwizart@gmail.com> - 1:295.40-1.5
 - rebuild for updated kernel
+
+* Sat Apr 28 2012 Nicolas Chauvet <kwizart@gmail.com> - 1:295.40-1.4
+- rebuild for updated kernel
+
+* Sun Apr 22 2012 Nicolas Chauvet <kwizart@gmail.com> - 1:295.40-1.3
+- rebuild for updated kernel
+
+* Mon Apr 16 2012 Nicolas Chauvet <kwizart@gmail.com> - 1:295.40-1.2
+- rebuild for updated kernel
+
+* Thu Apr 12 2012 Nicolas Chauvet <kwizart@gmail.com> - 1:295.40-1.1
+- rebuild for beta kernel
+
+* Wed Apr 11 2012 leigh scott <leigh123linux@googlemail.com> - 1:295.40-1
+- Update to 295.40
+
+* Thu Mar 22 2012 leigh scott <leigh123linux@googlemail.com> - 1:295.33-1
+- Update to 295.33
+
+* Thu Mar 22 2012 leigh scott <leigh123linux@googlemail.com> - 1:295.20-2
+- patched to build with 3.3.0 kernel
+
+* Tue Feb 14 2012 Nicolas Chauvet <kwizart@gmail.com> - 1:295.20-1
+- Update to 295.20
+
+* Tue Feb 07 2012 Nicolas Chauvet <kwizart@gmail.com> - 1:295.17-1.1
+- Rebuild for UsrMove
+
+* Wed Feb 01 2012 Nicolas Chauvet <kwizart@gmail.com> - 1:295.17-1
+- Update to 295.17 (beta)
+
+* Sat Dec 31 2011 Nicolas Chauvet <kwizart@gmail.com> - 1:295.09-1
+- Update to 295.09 (beta)
 
 * Tue Nov 22 2011 Nicolas Chauvet <kwizart@gmail.com> - 1:290.10-1
 - Update to 290.10
@@ -174,7 +562,7 @@ rm -rf $RPM_BUILD_ROOT
 * Thu Aug 05 2010 Nicolas Chauvet <kwizart@gmail.com> - 1:256.44-1
 - Update to 256.44
 
-* Wed Jun 18 2010 Vallimar de Morieve <vallimar@gmail.com> - 1:256.35-1
+* Fri Jun 18 2010 Vallimar de Morieve <vallimar@gmail.com> - 1:256.35-1
 - update to 256.35
 
 * Thu Jun 17 2010 Nicolas Chaubvet <kwizart@gmail.com> - 1:195.36.31-1
@@ -447,7 +835,7 @@ rm -rf $RPM_BUILD_ROOT
 * Wed Mar 19 2008 kwizart < kwizart at gmail.com > - 171.06-2
 - Add Patch for 2.6.25rc kernels
 
-* Fri Mar  8 2008 kwizart < kwizart at gmail.com > - 171.06-1
+* Sat Mar  8 2008 kwizart < kwizart at gmail.com > - 171.06-1
 - Update to 171.06 (beta)
 
 * Wed Feb 27 2008 kwizart < kwizart at gmail.com > - 169.12-1
